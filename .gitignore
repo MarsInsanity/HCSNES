@@ -1,0 +1,13 @@
+build/
+__pycache__/
+*.pyc
+*.sfc
+*.smc
+*.state
+
+# Build downloads and local scratch files
+zig-*/
+zig.tar.xz
+write-test.txt
+tests/hello.c
+*.zip

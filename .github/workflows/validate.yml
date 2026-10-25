@@ -1,0 +1,24 @@
+name: Validate HCSNES
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/run_tests.py --cc gcc
+  mips:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch pinned Zig
+        run: |
+          curl -fL https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz -o zig.tar.xz
+          echo "d45312e61ebcc48032b77bc4cf7fd6915c11fa16e4aad116b66c9468211230ea  zig.tar.xz" | sha256sum -c -
+          tar -xf zig.tar.xz
+      - run: python3 tools/build.py --target sf3000 --apu fast --zig "$PWD/zig-linux-x86_64-0.13.0/zig"
+      - run: python3 tools/build.py --target sf3000 --apu plus --zig "$PWD/zig-linux-x86_64-0.13.0/zig"
+      - run: python3 tools/inspect_elf.py build/sf3000/*.so
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hcsnes-mips-cores
+          path: build/sf3000/*.so

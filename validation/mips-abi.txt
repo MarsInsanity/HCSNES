@@ -1,0 +1,94 @@
+{
+  "file": "hcsnes_fast_libretro.so",
+  "bytes": 1700372,
+  "type": 3,
+  "machine": "MIPS",
+  "endian": "little",
+  "abi": "O32",
+  "isa": "MIPS32r2",
+  "fp": "hard float, 32-bit FPRs",
+  "needed": [
+    "libc.so.6"
+  ],
+  "glibc_versions": [
+    "GLIBC_2.0",
+    "GLIBC_2.3",
+    "GLIBC_2.7"
+  ]
+}
+{
+  "file": "hcsnes_plus_libretro.so",
+  "bytes": 852968,
+  "type": 3,
+  "machine": "MIPS",
+  "endian": "little",
+  "abi": "O32",
+  "isa": "MIPS32r2",
+  "fp": "hard float, 32-bit FPRs",
+  "needed": [
+    "libc.so.6"
+  ],
+  "glibc_versions": [
+    "GLIBC_2.0",
+    "GLIBC_2.3",
+    "GLIBC_2.7"
+  ]
+}
+{
+  "file": "hcsnes_fast_reference_libretro.so",
+  "bytes": 1624916,
+  "type": 3,
+  "machine": "MIPS",
+  "endian": "little",
+  "abi": "O32",
+  "isa": "MIPS32r2",
+  "fp": "hard float, 32-bit FPRs",
+  "needed": [
+    "libc.so.6"
+  ],
+  "glibc_versions": [
+    "GLIBC_2.0",
+    "GLIBC_2.3",
+    "GLIBC_2.7"
+  ]
+}
+{
+  "file": "hcsnes_bench",
+  "bytes": 24764,
+  "type": 2,
+  "machine": "MIPS",
+  "endian": "little",
+  "abi": "O32",
+  "isa": "MIPS32r2",
+  "fp": "hard float, 32-bit FPRs",
+  "needed": [
+    "libc.so.6",
+    "libdl.so.2"
+  ],
+  "glibc_versions": [
+    "GLIBC_2",
+    "GLIBC_2.0",
+    "GLIBC_2.17",
+    "GLIBC_2.2",
+    "GLIBC_2.3.3"
+  ]
+}
+{
+  "file": "hcsnes_fx_test",
+  "bytes": 217152,
+  "type": 2,
+  "machine": "MIPS",
+  "endian": "little",
+  "abi": "O32",
+  "isa": "MIPS32r2",
+  "fp": "hard float, 32-bit FPRs",
+  "needed": [
+    "libc.so.6"
+  ],
+  "glibc_versions": [
+    "GLIBC_2",
+    "GLIBC_2.0",
+    "GLIBC_2.2",
+    "GLIBC_2.3.3"
+  ]
+}

@@ -1,0 +1,9 @@
+Dispatch: 1024 opcode entries verified
+PASS: frameskip cap, fixed cadence, hysteresis and missing feedback
+PASS: 33536 Super FX differential cases (all 1024 entries, 4 plot modes)
+PASS: RTC fixed-width encoding, endian order and boundary guards
+<SOURCE_ROOT>\build\host\hcsnes_fast_libretro.dll
+PASS: ROM boot, RGB565 video, audio, state replay, option transitions, fixed/auto/threshold frameskip
+<SOURCE_ROOT>\build\host\hcsnes_plus_libretro.dll
+PASS: ROM boot, RGB565 video, audio, state replay, option transitions, fixed/auto/threshold frameskip
+All HCSNES native tests passed.

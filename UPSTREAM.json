@@ -1,0 +1,17 @@
+{
+  "snes9x2005": {
+    "url": "https://github.com/libretro/snes9x2005",
+    "commit": "a79dfe9047e7fec58808aefe48ad2bf499c7af11",
+    "tree": "32c645363b8e04cf11b3c508186c5f8636caeb7e"
+  },
+  "picoarch": {
+    "url": "https://github.com/tzubertowski/TreeFrogUI_picoarch",
+    "commit": "ae74df504a0744f85dc180da2280c3d77885e180",
+    "tree": "93fb108cb1e8edba6464228275c26fa3d63c952e"
+  },
+  "zig": {
+    "version": "0.13.0",
+    "windows_sha256": "d859994725ef9402381e557c60bb57497215682e355204d754ee3df75ee3c158"
+  },
+  "created": "2026-10-25"
+}
