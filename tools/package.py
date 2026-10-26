@@ -26,10 +26,18 @@ for name in ['hcsnes_bench','hcsnes_fx_test']:
 for item in (ROOT/'integration').glob('*.sh'):
     add('sdcard/hcsnes/'+item.name,item)
 add('sdcard/hcsnes/hcsnes-test.sfc',make_rom())
-for item in ROOT.rglob('*'):
+# A CI checkout also contains downloaded compilers. Package repository sources,
+# not every file that happens to be present beside them.
+if (ROOT/'.git').exists():
+    tracked=subprocess.check_output(['git','ls-files','-z'],cwd=ROOT).decode().split('\0')
+    source_files=[ROOT/p for p in tracked if p]
+else:
+    source_files=ROOT.rglob('*')
+for item in source_files:
     if not item.is_file():continue
     rel=item.relative_to(ROOT)
-    if any(x in ('build','.git','__pycache__') for x in rel.parts):continue
+    if any(x in ('build','.git','__pycache__') or x.startswith('zig-') for x in rel.parts):continue
+    if item.name == 'zig.tar.xz':continue
     if item.suffix in ('.pyc','.sfc','.smc','.state'):continue
     if item.name in ('write-test.txt','hello.c'):continue
     add('source/'+rel.as_posix(),item)
