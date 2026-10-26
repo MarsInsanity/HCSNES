@@ -1,4 +1,4 @@
-# HCSNES 0.1 — R36S V2.6 / SF3000
+# HCSNES 0.2.0 — R36S V2.6 / SF3000
 
 A modified Snes9x 2005 libretro core for TreeFrogUI/PicoArch on MIPS32r2 handhelds.
 
@@ -6,6 +6,10 @@ A modified Snes9x 2005 libretro core for TreeFrogUI/PicoArch on MIPS32r2 handhel
 Native tests pass, including 33,536 Super FX differential cases and full-core
 boot/audio/video/state tests. Yoshi's Island frame rate on the handheld has
 not yet been measured.
+
+**Slow gameplay on ShallotsOS:** use the [SD-card profiling steps](PROFILING.md)
+to collect timings without a device shell. See [CHANGELOG.md](CHANGELOG.md)
+for this release’s changes and testing priorities.
 
 ## Source repository
 
@@ -72,6 +76,9 @@ SA-1 and other supported cartridge hardware. There is no new dynamic recompiler.
   PIC, conservative aliasing/overflow flags, and no LTO.
 - **RTC fix:** portable 8-byte encoding replaces an upstream 8-byte copy into
   a 4-byte time_t on 32-bit targets.
+- **Optional subsystem profiling** with versioned logs, isolated frontend callback timings,
+  and GSU operation counts. Disabled by default; no save-state layout change.
+- **Hidden internal symbol visibility** while preserving exported libretro functions.
 - **Tests and device benchmark tools.**
 
 Direct threading changes code size and branch behavior. Its performance is
@@ -111,6 +118,9 @@ It has no gameplay or sound; it only checks loading/rendering.
 
 Requires Python 3.10+ and Zig **0.13.0** for the supplied Windows/Linux path.
 Get Zig from https://ziglang.org/download/0.13.0/ and point --zig at its executable.
+The existing GCC/sysroot interface remains supported. Extra `--cflags`,
+`--ldflags`, `--output-dir` and `--revision` controls are described in
+[PROFILING.md](PROFILING.md).
 
     # From the repository root (or the ZIP package's source directory):
     python tools/build.py --target sf3000 --apu fast --zig /path/to/zig
@@ -133,7 +143,7 @@ Build the benchmark with:
 
 Build the on-device differential test with:
 
-    zig cc -target mipsel-linux-gnueabihf.2.17 -mcpu=mips32r2 -mabi=32 -mfp32 -O2 -g0 -fwrapv -fno-strict-aliasing -Ilibretro-common/include tests/test_fx.c -o hcsnes_fx_test
+    zig cc -target mipsel-linux-gnueabihf.2.17 -mcpu=mips32r2 -mabi=32 -mfp32 -O2 -g0 -fwrapv -fno-strict-aliasing -Ilibretro-common/include tests/test_fx.c source/hcsnes_profile.c -o hcsnes_fx_test
 
 GitHub Actions runs native tests and MIPS cross builds on pushes and pull requests.
 See the repository Actions tab for the current CI result; **VALIDATION.md** records

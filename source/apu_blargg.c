@@ -1,4 +1,5 @@
 #include "../copyright"
+#include "hcsnes_profile.h"
 
 #ifdef USE_BLARGG_APU
 
@@ -3339,11 +3340,25 @@ void S9xDeinitAPU()
 
 /* Emulated port read at specified time */
 
-uint8_t S9xAPUReadPort (int32_t port)	{ return ((uint8_t) spc_run_until_(S9X_APU_GET_CLOCK(CPU.Cycles))[port]); }
+uint8_t S9xAPUReadPort(int32_t port)
+{
+   uint8_t result;
+   HCSNES_PROFILE_ENTER(HCP_APU);
+   result = (uint8_t)spc_run_until_(S9X_APU_GET_CLOCK(CPU.Cycles))[port];
+   HCSNES_PROFILE_LEAVE();
+   return result;
+}
 
 /* Emulated port write at specified time */
 
+static void hcsnes_apu_write_body(int32_t port, uint8_t byte);
 void S9xAPUWritePort (int32_t port, uint8_t byte)
+{
+   HCSNES_PROFILE_ENTER(HCP_APU);
+   hcsnes_apu_write_body(port, byte);
+   HCSNES_PROFILE_LEAVE();
+}
+static void hcsnes_apu_write_body(int32_t port, uint8_t byte)
 {
    spc_run_until_( S9X_APU_GET_CLOCK(CPU.Cycles) ) [0x10 + port] = byte;
    m.ram.ram [0xF4 + port] = byte;
@@ -3354,7 +3369,14 @@ void S9xAPUSetReferenceTime (int32_t cpucycles)
    reference_time = cpucycles;
 }
 
+static void hcsnes_apu_execute_body(void);
 void S9xAPUExecute()
+{
+   HCSNES_PROFILE_ENTER(HCP_APU);
+   hcsnes_apu_execute_body();
+   HCSNES_PROFILE_LEAVE();
+}
+static void hcsnes_apu_execute_body(void)
 {
    /* Accumulate partial APU cycles */
    spc_end_frame(S9X_APU_GET_CLOCK(CPU.Cycles));

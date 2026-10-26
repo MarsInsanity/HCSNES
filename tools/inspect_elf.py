@@ -23,8 +23,20 @@ def inspect(path):
         for i in range(ds[4],ds[4]+ds[5],8):
             tag,value=struct.unpack_from('<II',b,i)
             if tag==1:dependencies.append(st[value:].split(b'\0',1)[0].decode())
+    exports=[]
+    if '.dynsym' in sec and strings:
+        ds=sec['.dynsym']
+        for i in range(ds[4],ds[4]+ds[5],ds[9] or 16):
+            n,value,size,info,other,index=struct.unpack_from('<IIIBBH',b,i)
+            if index and info>>4 in (1,2) and (other&3)==0:
+                exports.append(st[n:].split(b'\0',1)[0].decode())
+    if str(path).endswith('_libretro.so'):
+        required={'retro_init','retro_run','retro_get_system_info','retro_load_game',
+                  'retro_serialize','retro_unserialize','retro_set_environment'}
+        assert required.issubset(exports),('Missing libretro exports',required-set(exports))
+        assert all(n.startswith('retro_') for n in exports),('Leaked internals',exports)
     return dict(file=Path(path).name,bytes=len(b),type=typ,machine='MIPS',
        endian='little',abi='O32',isa='MIPS32r2',fp='hard float, 32-bit FPRs',
-       needed=dependencies,glibc_versions=sorted(set(x.decode() for x in re.findall(rb'GLIBC_[0-9.]+',b))))
+       exports=exports,needed=dependencies,glibc_versions=sorted(set(x.decode() for x in re.findall(rb'GLIBC_[0-9.]+',b))))
 if __name__=='__main__':
     for p in sys.argv[1:]:print(json.dumps(inspect(p),indent=2))

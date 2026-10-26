@@ -66,6 +66,15 @@ struct retro_core_option_v2_definition option_defs_us[] = {
     * Adding more variables and rearranging them is safe. */
 
    {
+      "hcsnes_profiling",
+      "Profiling",
+      NULL,
+      "Log subsystem timings and frame/GSU counts every 300 frames. Requires frontend core logging. Adds measurement overhead; turn Off for normal play.",
+      NULL, NULL,
+      { { "disabled", "Off" }, { "enabled", "On" }, { NULL, NULL } },
+      "disabled"
+   },
+   {
       "snes9x_2005_region",
       "Console Region (Restart)",
       NULL,

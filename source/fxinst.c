@@ -2,6 +2,7 @@
 
 #include "fxemu.h"
 #include "fxinst.h"
+#include "hcsnes_profile.h"
 #include <string.h>
 
 #include <retro_inline.h>
@@ -3358,8 +3359,46 @@ uint32_t fx_run_reference(uint32_t nInstructions)
 }
 #endif
 
+/* A separate instrumented loop keeps counters out of the normal hot path.
+ * It uses the SAME generated dispatch and opcode handlers as the normal loop. */
+static uint32_t fx_run_profiled(uint32_t nInstructions)
+{
+   uint64_t instructions = 0, plot = 0, rpix = 0;
+   GSU.vCounter = nInstructions;
+   READR14;
+#define HCSNES_COUNT(op) do { \
+   ++instructions; \
+   if ((op) == 0x4c) { \
+      if (GSU.vStatusReg & 0x100) ++rpix; else ++plot; \
+   } \
+} while (0)
+#ifdef HCSNES_THREADED_FX
+#define HCSNES_DISPATCH() do { \
+   uint32_t op; \
+   if (!(TF(G) && (GSU.vCounter-- > 0))) goto profiled_finished; \
+   op = (uint32_t) PIPE; \
+   HCSNES_COUNT(op); \
+   FETCHPIPE; \
+   goto *dispatch[(GSU.vStatusReg & 0x300) | op]; \
+} while (0)
+#include "hcsnes_fx_dispatch.h"
+profiled_finished:
+#undef HCSNES_DISPATCH
+#else
+   while (TF(G) && (GSU.vCounter-- > 0)) {
+      HCSNES_COUNT((uint32_t)PIPE);
+      FX_STEP;
+   }
+#endif
+#undef HCSNES_COUNT
+   hcsnes_profile_gsu_counts(instructions, plot, rpix);
+   return nInstructions - GSU.vInstCount;
+}
+
 uint32_t fx_run(uint32_t nInstructions)
 {
+   if (hcsnes_profile_enabled)
+      return fx_run_profiled(nInstructions);
 #ifdef HCSNES_THREADED_FX
    GSU.vCounter = nInstructions;
    READR14;

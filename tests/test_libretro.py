@@ -18,17 +18,26 @@ Audio=C.CFUNCTYPE(None,C.c_int16,C.c_int16)
 Poll=C.CFUNCTYPE(None)
 Input=C.CFUNCTYPE(C.c_int16,C.c_uint,C.c_uint,C.c_uint,C.c_uint)
 core=C.CDLL(str(Path(sys.argv[1]).resolve()))
-mode=b'disabled'; cap=b'1'; changed=False
+mode=b'disabled'; cap=b'1'; changed=False; profiling=b'disabled'
+logger = C.CDLL(str(Path(sys.argv[2]).resolve())) if len(sys.argv)>2 else None
+if logger:
+    logger.captured_log.restype=C.c_char_p
+    logger.clear_log()
+class SystemInfo(C.Structure):
+    _fields_=[('name',C.c_char_p),('version',C.c_char_p),('extensions',C.c_char_p),
+              ('need_fullpath',C.c_bool),('block_extract',C.c_bool)]
 rendered=duplicates=audio_frames=0
 pixels=[]; checksums=[]
 @Env
 def env(cmd,data):
     global changed
     cmd &= 0xffff
+    if cmd==27 and logger:
+        C.cast(data,C.POINTER(C.c_void_p))[0]=C.cast(logger.capture_log,C.c_void_p).value;return True
     if cmd==52: C.cast(data,C.POINTER(C.c_uint))[0]=0; return True
     if cmd==15:
         v=C.cast(data,C.POINTER(Variable)).contents
-        values={b'snes9x_2005_frameskip':mode,b'snes9x_2005_frameskip_interval':cap}
+        values={b'snes9x_2005_frameskip':mode,b'snes9x_2005_frameskip_interval':cap,b'hcsnes_profiling':profiling}
         if v.key in values: v.value=values[v.key];return True
         return False
     if cmd==17:
@@ -69,6 +78,9 @@ core.retro_serialize.argtypes=[C.c_void_p,C.c_size_t];core.retro_serialize.resty
 core.retro_unserialize.argtypes=[C.c_void_p,C.c_size_t];core.retro_unserialize.restype=C.c_bool
 core.retro_get_memory_data.argtypes=[C.c_uint];core.retro_get_memory_data.restype=C.c_void_p
 core.retro_get_memory_size.argtypes=[C.c_uint];core.retro_get_memory_size.restype=C.c_size_t
+info=SystemInfo()
+core.retro_get_system_info(C.byref(info))
+assert info.version.startswith(b'0.2.0+'),info.version
 core.retro_init()
 rom=C.create_string_buffer(make_rom())
 game=Game(b'hcsnes-test.sfc',C.cast(rom,C.c_void_p),32768,None)
@@ -97,5 +109,38 @@ assert rendered==60 and duplicates==0,'auto skipped with no audio feedback'
 mode=b'manual';changed=True;rendered=duplicates=0
 for i in range(60):core.retro_run()
 assert rendered==60 and duplicates==0
+# Profiling cannot alter serialized size, execution or rendered output.
+assert not core.retro_serialize(state,size-1)
+assert not core.retro_unserialize(state,size-1)
+mode=b'disabled';profiling=b'disabled';changed=True
+assert core.retro_unserialize(state,size)
+checksums.clear()
+for i in range(600):core.retro_run()
+expected_ram=C.string_at(ram_ptr,ram_size);expected_video=checksums[:]
+assert core.retro_unserialize(state,size)
+profiling=b'enabled';changed=True;checksums.clear()
+if logger: logger.clear_log()
+for i in range(600):core.retro_run()
+assert core.retro_serialize_size()==size
+assert C.string_at(ram_ptr,ram_size)==expected_ram
+assert checksums==expected_video,'profiling changed video output'
+if logger:
+    lines=[x for x in logger.captured_log().decode().splitlines() if x.startswith('HCSNES profile ')]
+    assert len(lines)==2,lines
+    for index,line in enumerate(lines):
+        assert 'frame='+str((index+1)*300)+' ' in line,line
+        assert 'n=300 reason=window' in line and 'rendered=300 skipped=0' in line,line
+        assert 'gsu_inst=0 plot=0 rpix=0' in line,line
+        assert 'cpu_other=' in line and 'video_cb=' in line and 'audio_cb=' in line,line
+    # A mode change remains live while profiling; partial windows flush on Off.
+    mode=b'fixed';changed=True
+    for i in range(60):core.retro_run()
+    profiling=b'disabled';changed=True
+    core.retro_run()
+    assert 'n=60 reason=off' in logger.captured_log().decode()
+    assert 'rendered=30 skipped=30' in logger.captured_log().decode()
+    logger.clear_log()
+    for i in range(301):core.retro_run()
+    assert not logger.captured_log(),'profiling logged while disabled'
 core.retro_unload_game();core.retro_deinit()
-print('PASS: ROM boot, RGB565 video, audio, state replay, option transitions, fixed/auto/threshold frameskip')
+print('PASS: ROM boot, RGB565 video, audio, state replay, option transitions, fixed/auto/threshold frameskip, profiling cadence and execution equivalence')

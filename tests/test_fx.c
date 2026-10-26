@@ -12,6 +12,7 @@
 static unsigned char rom[6*1024*1024], ram[4*65536], regs[0x300];
 static unsigned char before_ram[sizeof(ram)], expected_ram[sizeof(ram)];
 static unsigned char before_regs[sizeof(regs)], expected_regs[sizeof(regs)];
+static void quiet_log(enum retro_log_level level, const char *fmt, ...) { (void)level; (void)fmt; }
 static unsigned rng=0x36f26001u;
 static unsigned random32(void) {
    rng^=rng<<13; rng^=rng>>17; rng^=rng<<5; return rng;
@@ -56,7 +57,9 @@ static void compare(unsigned opcode, unsigned mode, unsigned seed, unsigned budg
    memcpy(expected_ram,ram,sizeof(ram)); memcpy(expected_regs,regs,sizeof(regs));
    GSU=initial;
    memcpy(ram,before_ram,sizeof(ram)); memcpy(regs,before_regs,sizeof(regs));
+   hcsnes_profile_begin_frame();
    actual_count=fx_run(budget);
+   hcsnes_profile_end_frame(true, 0, 1, false, 0, false);
    if (actual_count!=expected_count || memcmp(&GSU,&expected,sizeof(GSU)) ||
        memcmp(ram,expected_ram,sizeof(ram)) || memcmp(regs,expected_regs,sizeof(regs)))
    {
@@ -66,7 +69,10 @@ static void compare(unsigned opcode, unsigned mode, unsigned seed, unsigned budg
 }
 int main(void)
 {
-   unsigned i,op,mode,seed,count=0;
+   unsigned i,op,mode,seed,count=0,profiling;
+   for (profiling=0;profiling<2;++profiling) {
+   count=0;
+   hcsnes_profile_configure(profiling != 0, quiet_log);
    for(i=0;i<sizeof(rom);++i) rom[i]=random32();
    for(i=0;i<sizeof(ram);++i) ram[i]=random32();
    for(mode=0;mode<4;++mode)
@@ -83,6 +89,8 @@ int main(void)
       setup(seed,seed%4,seed); CF(G);
       compare(seed,seed%4,seed,64); ++count;
    }
-   printf("PASS: %u Super FX differential cases (all 1024 entries, 4 plot modes)\n",count);
+   printf("PASS: %u Super FX differential cases (all 1024 entries, 4 plot modes, profiling=%u)\n",count,profiling);
+   }
+   hcsnes_profile_configure(false, quiet_log);
    return 0;
 }

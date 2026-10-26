@@ -1,4 +1,5 @@
 #include "../copyright"
+#include "hcsnes_profile.h"
 
 #include "snes9x.h"
 
@@ -427,7 +428,14 @@ void S9xStartScreenRefresh(void)
       IPPU.FrameCount = 0;
 }
 
+static void hcsnes_render_line_body(uint8_t C);
 void RenderLine(uint8_t C)
+{
+   HCSNES_PROFILE_ENTER(HCP_PPU);
+   hcsnes_render_line_body(C);
+   HCSNES_PROFILE_LEAVE();
+}
+static void hcsnes_render_line_body(uint8_t C)
 {
    if (IPPU.RenderThisFrame)
    {
@@ -2725,7 +2733,14 @@ static void RenderScreen(uint8_t* Screen, bool sub, bool force_no_add, uint8_t D
    }
 }
 
+static void hcsnes_update_screen_body(void);
 void S9xUpdateScreen(void)
+{
+   HCSNES_PROFILE_ENTER(HCP_PPU);
+   hcsnes_update_screen_body();
+   HCSNES_PROFILE_LEAVE();
+}
+static void hcsnes_update_screen_body(void)
 {
    int32_t x2 = 1;
    uint32_t starty, endy, black;

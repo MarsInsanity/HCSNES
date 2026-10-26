@@ -1,11 +1,25 @@
 name: Validate HCSNES
 on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
 jobs:
   native:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cflags: ["", "-O3"]
     steps:
       - uses: actions/checkout@v4
-      - run: python3 tools/run_tests.py --cc gcc
+      - run: python3 tools/run_tests.py --cc gcc --cflags="${{ matrix.cflags }}"
+  gcc-interface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gcc-mipsel-linux-gnu
+      # Generic GCC verifies the firmware CLI and flags; not a device SDK runtime test.
+      - run: python3 tools/build.py --target sf3000 --apu fast --cc mipsel-linux-gnu-gcc --sysroot / --cflags="-mtune=74kc"
+      - run: python3 tools/build.py --target sf3000 --apu plus --cc mipsel-linux-gnu-gcc --sysroot /
+      - run: python3 tools/inspect_elf.py build/sf3000/*.so
   mips:
     runs-on: ubuntu-latest
     steps:
@@ -17,8 +31,15 @@ jobs:
           tar -xf zig.tar.xz
       - run: python3 tools/build.py --target sf3000 --apu fast --zig "$PWD/zig-linux-x86_64-0.13.0/zig"
       - run: python3 tools/build.py --target sf3000 --apu plus --zig "$PWD/zig-linux-x86_64-0.13.0/zig"
-      - run: python3 tools/inspect_elf.py build/sf3000/*.so
+      - run: python3 tools/build.py --target sf3000 --apu fast --reference --zig "$PWD/zig-linux-x86_64-0.13.0/zig"
+      - name: Build device diagnostics
+        run: |
+          ZIG="$PWD/zig-linux-x86_64-0.13.0/zig"
+          "$ZIG" cc -target mipsel-linux-gnueabihf.2.17 -mcpu=mips32r2 -mabi=32 -mfp32 -O2 -g0 -fno-sanitize=all -Ilibretro-common/include tools/hcsnes_bench.c -ldl -o build/sf3000/hcsnes_bench
+          "$ZIG" cc -target mipsel-linux-gnueabihf.2.17 -mcpu=mips32r2 -mabi=32 -mfp32 -O2 -g0 -fno-sanitize=all -fwrapv -fno-strict-aliasing -Ilibretro-common/include tests/test_fx.c source/hcsnes_profile.c -o build/sf3000/hcsnes_fx_test
+      - run: python3 tools/inspect_elf.py build/sf3000/*.so build/sf3000/hcsnes_bench build/sf3000/hcsnes_fx_test
+      - run: python3 tools/package.py build/HCSNES-R36S-v0.2.0.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: hcsnes-mips-cores
-          path: build/sf3000/*.so
+          name: HCSNES-R36S-v0.2.0
+          path: build/HCSNES-R36S-v0.2.0.zip

@@ -1,4 +1,5 @@
 #include "../copyright"
+#include "hcsnes_profile.h"
 
 #include "snes9x.h"
 #include "memmap.h"
@@ -2121,7 +2122,14 @@ void S9xUpdateJoypads()
    }
 }
 
+static void hcsnes_superfx_body(void);
 void S9xSuperFXExec()
+{
+   HCSNES_PROFILE_ENTER(HCP_GSU);
+   hcsnes_superfx_body();
+   HCSNES_PROFILE_LEAVE();
+}
+static void hcsnes_superfx_body(void)
 {
    if (Settings.SuperFX)
    {

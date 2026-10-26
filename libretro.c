@@ -13,6 +13,8 @@
 #include "srtc.h"
 #include "sa1.h"
 #include "hcsnes_frameskip.h"
+#include "hcsnes_profile.h"
+#include "hcsnes_version.h"
 
 #ifdef PSP
 #include <pspkernel.h>
@@ -40,6 +42,22 @@ static retro_input_state_t input_cb = NULL;
 static retro_audio_sample_batch_t audio_batch_cb = NULL;
 static retro_environment_t environ_cb = NULL;
 struct retro_perf_callback perf_cb;
+
+static void hcsnes_video(const void *data, unsigned width, unsigned height, size_t pitch)
+{
+   HCSNES_PROFILE_ENTER(HCP_VIDEO);
+   video_cb(data, width, height, pitch);
+   HCSNES_PROFILE_LEAVE();
+}
+
+static size_t hcsnes_audio_batch(const int16_t *data, size_t frames)
+{
+   size_t written;
+   HCSNES_PROFILE_ENTER(HCP_AUDIO);
+   written = audio_batch_cb(data, frames);
+   HCSNES_PROFILE_LEAVE();
+   return written;
+}
 
 static bool libretro_supports_option_categories = false;
 static bool libretro_supports_bitmasks = false;
@@ -342,7 +360,14 @@ static void audio_out_buffer_deinit(void)
 }
 
 #ifdef USE_BLARGG_APU
+static void hcsnes_audio_callback_body(void);
 static void S9xAudioCallback(void)
+{
+   HCSNES_PROFILE_ENTER(HCP_APU);
+   hcsnes_audio_callback_body();
+   HCSNES_PROFILE_LEAVE();
+}
+static void hcsnes_audio_callback_body(void)
 {
    size_t available_samples;
    size_t buffer_capacity = audio_out_buffer_size -
@@ -376,7 +401,14 @@ static void S9xAudioCallback(void)
 }
 #endif
 
+static void hcsnes_audio_upload_body(void);
 static void audio_upload_samples(void)
+{
+   HCSNES_PROFILE_ENTER(HCP_APU);
+   hcsnes_audio_upload_body();
+   HCSNES_PROFILE_LEAVE();
+}
+static void hcsnes_audio_upload_body(void)
 {
    size_t available_frames;
 #ifdef USE_BLARGG_APU
@@ -400,7 +432,7 @@ static void audio_upload_samples(void)
             audio_batch_frames_max) ?
                   audio_batch_frames_max :
                   available_frames;
-      size_t frames_written = audio_batch_cb(
+      size_t frames_written = hcsnes_audio_batch(
             audio_out_buffer_ptr, frames_to_write);
 
       if ((frames_written < frames_to_write) &&
@@ -429,7 +461,7 @@ static void audio_upload_samples(void)
    else
       S9xMixSamples(audio_out_buffer, available_frames << 1);
 
-   audio_batch_cb(audio_out_buffer, available_frames);
+   hcsnes_audio_batch(audio_out_buffer, available_frames);
 #endif
 }
 
@@ -470,6 +502,7 @@ void retro_init(void)
 
 void retro_deinit(void)
 {
+   hcsnes_profile_configure(false, log_cb);
    if (Settings.SPC7110)
       Del7110Gfx();
 
@@ -559,6 +592,12 @@ static void check_variables(bool first_run)
          Settings.ForcePAL  = !strcmp(var.value, "PAL");
       }
    }
+
+   var.key = "hcsnes_profiling";
+   var.value = NULL;
+   hcsnes_profile_configure(
+      environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value &&
+      strcmp(var.value, "enabled") == 0, log_cb);
 
    var.key = "snes9x_2005_frameskip";
    var.value = NULL;
@@ -665,8 +704,10 @@ void retro_run(void)
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       check_variables(false);
 
+   hcsnes_profile_begin_frame();
+
 #ifdef NO_VIDEO_OUTPUT
-   video_cb(NULL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
+   hcsnes_video(NULL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
    IPPU.RenderThisFrame = false;
 #endif
 
@@ -711,15 +752,21 @@ void retro_run(void)
       update_audio_latency = false;
    }
 
+   HCSNES_PROFILE_ENTER(HCP_INPUT);
    poll_cb();
+   HCSNES_PROFILE_LEAVE();
 
    RETRO_PERFORMANCE_INIT(S9xMainLoop_func);
    RETRO_PERFORMANCE_START(S9xMainLoop_func);
+   HCSNES_PROFILE_ENTER(HCP_CPU);
    S9xMainLoop();
+   HCSNES_PROFILE_LEAVE();
    RETRO_PERFORMANCE_STOP(S9xMainLoop_func);
 
 #ifdef NO_VIDEO_OUTPUT
    audio_upload_samples();
+   hcsnes_profile_end_frame(false, frameskip_type, frameskip_interval,
+      retro_audio_buff_active, retro_audio_buff_occupancy, retro_audio_buff_underrun);
    return;
 #endif
 
@@ -737,15 +784,17 @@ void retro_run(void)
       sceGuTexFunc(GU_TFX_REPLACE, GU_TCC_RGB);
       sceGuDisable(GU_BLEND);
       sceGuFinish();
-      video_cb(texture_vram_p, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
+      hcsnes_video(texture_vram_p, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
 #else
-      video_cb(GFX.Screen, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
+      hcsnes_video(GFX.Screen, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
 #endif
    }
    else
-      video_cb(NULL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
+      hcsnes_video(NULL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
 
    audio_upload_samples();
+   hcsnes_profile_end_frame(IPPU.RenderThisFrame, frameskip_type, frameskip_interval,
+      retro_audio_buff_active, retro_audio_buff_occupancy, retro_audio_buff_underrun);
 }
 
 bool S9xReadMousePosition(int32_t which1, int32_t* x, int32_t* y, uint32_t* buttons)
@@ -788,10 +837,7 @@ void retro_get_system_info(struct retro_system_info* info)
    info->need_fullpath    = true;
 #endif
    info->valid_extensions = "smc|fig|sfc|gd3|gd7|dx2|bsx|swc";
-#ifndef GIT_VERSION
-#define GIT_VERSION ""
-#endif
-   info->library_version  = "v1.36" GIT_VERSION;
+   info->library_version  = HCSNES_BUILD_VERSION;
 #ifdef USE_BLARGG_APU
    info->library_name     = "HCSNES Plus";
 #else
@@ -815,6 +861,8 @@ void retro_get_system_av_info(struct retro_system_av_info* info)
 
 void retro_reset(void)
 {
+   hcsnes_profile_flush("reset");
+   hcsnes_profile_reset();
    CPU.Flags = 0;
    S9xSoftReset();
 }
@@ -835,7 +883,8 @@ bool retro_serialize(void* data, size_t size)
 {
    int32_t i;
    uint8_t* buffer = data;
-   (void) size;
+   if (!data || size < retro_serialize_size())
+      return false;
 #ifdef LAGFIX
    S9xPackStatus();
 #ifndef USE_BLARGG_APU
@@ -896,9 +945,11 @@ bool retro_unserialize(const void* data, size_t size)
    uint32_t sa1_old_flags = SA1.Flags;
    SSA1 sa1_state;
 
-   if (size != retro_serialize_size())
+   if (!data || size != retro_serialize_size())
       return false;
 
+   hcsnes_profile_flush("state_load");
+   hcsnes_profile_reset();
    S9xReset();
    memcpy(&CPU, buffer, sizeof(CPU));
    buffer += sizeof(CPU);
@@ -1099,6 +1150,14 @@ bool retro_load_game(const struct retro_game_info* game)
 #endif
       return false;
 
+   hcsnes_profile_reset();
+   if (log_cb)
+      log_cb(RETRO_LOG_INFO, "HCSNES build v=%s apu=%s fx=%s region=%s gsu=%u sa1=%u shutdown=%u profiling=%u\n",
+         HCSNES_BUILD_VERSION, HCSNES_APU_NAME, HCSNES_FX_NAME,
+         Settings.PAL ? "PAL" : "NTSC", (unsigned)Settings.SuperFX,
+         (unsigned)Settings.SA1, (unsigned)Settings.Shutdown,
+         (unsigned)hcsnes_profile_enabled);
+
    Settings.FrameTime = (Settings.PAL ? Settings.FrameTimePAL : Settings.FrameTimeNTSC);
 
    retro_set_audio_buff_status_cb();
@@ -1120,6 +1179,8 @@ bool retro_load_game_special(unsigned game_type, const struct retro_game_info* i
 
 void retro_unload_game(void)
 {
+   hcsnes_profile_flush("unload");
+   hcsnes_profile_reset();
 }
 
 void* retro_get_memory_data(unsigned type)

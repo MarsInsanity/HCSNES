@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """Package binaries and complete source, excluding compiler/cache intermediates."""
 from pathlib import Path
-import hashlib, json, sys, zipfile
+import hashlib, json, re, subprocess, sys, zipfile
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tests'))
 from make_test_rom import make_rom
 output=Path(sys.argv[1]).resolve()
 output.parent.mkdir(parents=True,exist_ok=True)
-prefix='HCSNES-R36S-v0.1/'
+version=re.search(r'#define HCSNES_VERSION "([^"]+)"',(ROOT/'source/hcsnes_version.h').read_text()).group(1)
+prefix='HCSNES-R36S-v'+version+'/'
 entries={}
 def add(name,data):
     if isinstance(data,Path):data=data.read_bytes()
     entries[prefix+name]=data
-for name in ['README.md','VALIDATION.md','LICENSE-HCSNES','copyright']:
+for name in ['README.md','PROFILING.md','CHANGELOG.md','VALIDATION.md','LICENSE-HCSNES','copyright']:
     add(name,ROOT/name)
 for name in ['hcsnes_fast_libretro.so','hcsnes_plus_libretro.so','hcsnes_fast_reference_libretro.so']:
     add('sdcard/cubegm/cores/'+name,ROOT/'build/sf3000'/name)
@@ -32,6 +33,8 @@ for item in ROOT.rglob('*'):
     if item.suffix in ('.pyc','.sfc','.smc','.state'):continue
     if item.name in ('write-test.txt','hello.c'):continue
     add('source/'+rel.as_posix(),item)
+revision=json.loads((ROOT/'build/sf3000/hcsnes_fast_libretro.so.build.json').read_text())['revision']
+add('source/SOURCE_REVISION',(revision+'\n').encode())
 checksums=''.join(hashlib.sha256(data).hexdigest()+'  '+name[len(prefix):]+'\n'
                   for name,data in sorted(entries.items()))
 add('SHA256SUMS.txt',checksums.encode())

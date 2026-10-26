@@ -1,6 +1,21 @@
 # HCSNES validation — 2026-10-25
 
-## Executed checks
+## 0.2.0 validation
+
+The native GCC run passed the 33,536-case Super FX suite with profiling both
+Off and On (67,072 comparisons), deterministic timing tests, and the Fast/Plus
+full-core tests. Profiling produced the expected two 300-frame log windows
+without changing WRAM replay or video output. Unit checks cover nested time
+accounting, maxima, callback exclusion, missing log support and clock failure.
+
+CI now repeats native validation at O2 and O3, verifies the GCC/sysroot build
+interface, cross-builds all three MIPS cores and the diagnostics, checks ELF
+ABI/API exports, and produces the complete SD-card package. Consult the Actions
+run for the exact revision's current result. On-device tests remain outstanding.
+The existing raw files below record the original 0.1 validation, not a new
+handheld benchmark.
+
+## Original 0.1 executed checks
 
 - Native Windows x86-64 C builds with Zig 0.13.0 / Clang 18.1.6.
 - 33,536 Super FX differential cases passed: all 1,024 ALT/opcode entries,
@@ -30,7 +45,9 @@ The differential tests compare the inherited and modified Super FX interpreters;
 they are not independent chip-accuracy tests. The full-core runtime test uses an
 original simple LoROM with no enhancement chip, not a commercial game.
 
-The cores import libc.so.6; observed version strings reach GLIBC_2.7.
+The original 0.1 cores import libc.so.6; observed version strings reach GLIBC_2.7.
+The 0.2 profiler adds clock_gettime; the supplied Zig target uses a glibc 2.17
+baseline. Check the new ELF report and the firmware SDK/runtime for compatibility.
 The diagnostic benchmark additionally imports libdl.so.2 and GLIBC_2.17.
 ELF matching does not establish exact handheld loader/runtime compatibility.
 The MIPS diagnostic executables are compiled but have not run on MIPS hardware.
