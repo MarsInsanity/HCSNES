@@ -43,6 +43,8 @@ int main(void)
       now += 9000; HCSNES_PROFILE_LEAVE();
       HCSNES_PROFILE_ENTER(HCP_AUDIO);
       now += 10000; HCSNES_PROFILE_LEAVE();
+      HCSNES_PROFILE_ENTER(HCP_INPUT);
+      now += 2000; HCSNES_PROFILE_LEAVE();
       hcsnes_profile_gsu_counts(7,2,1);
       hcsnes_profile_end_frame((i%2)==0,3,1,true,50,(i%3)==0);
       assert(reports == (i==299 ? 1u : 0u));
@@ -51,7 +53,7 @@ int main(void)
    assert(strstr(line,"rendered=150 skipped=150"));
    assert(strstr(line,"feedback=300 underruns=100"));
    assert(strstr(line,"core=22/22 cpu_other=6/6 gsu=3/3 ppu=5/5 apu=7/7"));
-   assert(strstr(line,"video_cb=9/9 audio_cb=10/10"));
+   assert(strstr(line,"video_cb=9/9 audio_cb=10/10 input_cb=2/2"));
    assert(strstr(line,"gsu_inst=2100 plot=600 rpix=300"));
    hcsnes_profile_begin_frame();
    now+=8000;

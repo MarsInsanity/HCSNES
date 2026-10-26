@@ -59,6 +59,15 @@ static size_t hcsnes_audio_batch(const int16_t *data, size_t frames)
    return written;
 }
 
+static int16_t hcsnes_input_state(unsigned port, unsigned device, unsigned index, unsigned id)
+{
+   int16_t value;
+   HCSNES_PROFILE_ENTER(HCP_INPUT);
+   value = input_cb(port, device, index, id);
+   HCSNES_PROFILE_LEAVE();
+   return value;
+}
+
 static bool libretro_supports_option_categories = false;
 static bool libretro_supports_bitmasks = false;
 
@@ -558,7 +567,7 @@ uint32_t S9xReadJoypad(int32_t port)
    uint32_t joy_bits = 0;
 
    if (libretro_supports_bitmasks)
-      joy_bits = input_cb(port, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_MASK);
+      joy_bits = hcsnes_input_state(port, RETRO_DEVICE_JOYPAD, 0, RETRO_DEVICE_ID_JOYPAD_MASK);
    else
    {
       for (i = 0; i < (RETRO_DEVICE_ID_JOYPAD_R3+1); i++)

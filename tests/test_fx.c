@@ -4,15 +4,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#define HCSNES_TEST 1
-#define HCSNES_THREADED_FX 1
-#include "../source/fxinst.c"
-#include "../source/fxemu.c"
+#include <stdarg.h>
+#include "../source/fxemu.h"
+#include "../source/fxinst.h"
+#include "../source/hcsnes_profile.h"
+extern FxRegs_s GSU;
+extern uint32_t fx_run_reference(uint32_t instructions);
 
 static unsigned char rom[6*1024*1024], ram[4*65536], regs[0x300];
 static unsigned char before_ram[sizeof(ram)], expected_ram[sizeof(ram)];
 static unsigned char before_regs[sizeof(regs)], expected_regs[sizeof(regs)];
-static void quiet_log(enum retro_log_level level, const char *fmt, ...) { (void)level; (void)fmt; }
+static char last_log[2048];
+static void quiet_log(enum retro_log_level level, const char *fmt, ...)
+{
+   va_list ap; (void)level;
+   va_start(ap,fmt); vsnprintf(last_log,sizeof(last_log),fmt,ap); va_end(ap);
+}
 static unsigned rng=0x36f26001u;
 static unsigned random32(void) {
    rng^=rng<<13; rng^=rng>>17; rng^=rng<<5; return rng;
@@ -91,6 +98,18 @@ int main(void)
    }
    printf("PASS: %u Super FX differential cases (all 1024 entries, 4 plot modes, profiling=%u)\n",count,profiling);
    }
+   for (i=0;i<5;++i) {
+      hcsnes_profile_configure(false,quiet_log);
+      hcsnes_profile_configure(true,quiet_log);
+      setup(0x4c | ((i&3)<<8),0,2);
+      hcsnes_profile_begin_frame();
+      fx_run(i==4 ? 0 : 1);
+      hcsnes_profile_end_frame(true,0,1,false,0,false);
+      hcsnes_profile_flush("counter_test");
+      assert(strstr(last_log,i==4 ? "gsu_inst=0 plot=0 rpix=0" :
+         (i&1) ? "gsu_inst=1 plot=0 rpix=1" : "gsu_inst=1 plot=1 rpix=0"));
+   }
    hcsnes_profile_configure(false, quiet_log);
+   puts("PASS: real GSU PLOT/RPIX counters in all ALT modes and zero budget");
    return 0;
 }

@@ -143,7 +143,7 @@ Build the benchmark with:
 
 Build the on-device differential test with:
 
-    zig cc -target mipsel-linux-gnueabihf.2.17 -mcpu=mips32r2 -mabi=32 -mfp32 -O2 -g0 -fwrapv -fno-strict-aliasing -Ilibretro-common/include tests/test_fx.c source/hcsnes_profile.c -o hcsnes_fx_test
+    zig cc -target mipsel-linux-gnueabihf.2.17 -mcpu=mips32r2 -mabi=32 -mfp32 -O2 -g0 -fwrapv -fno-strict-aliasing -Ilibretro-common/include -DHCSNES_TEST -DHCSNES_THREADED_FX tests/test_fx.c source/fxinst.c source/fxemu.c source/hcsnes_profile.c -o hcsnes_fx_test
 
 GitHub Actions runs native tests and MIPS cross builds on pushes and pull requests.
 See the repository Actions tab for the current CI result; **VALIDATION.md** records

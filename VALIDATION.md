@@ -11,7 +11,10 @@ accounting, maxima, callback exclusion, missing log support and clock failure.
 CI now repeats native validation at O2 and O3, verifies the GCC/sysroot build
 interface, cross-builds all three MIPS cores and the diagnostics, checks ELF
 ABI/API exports, and produces the complete SD-card package. Consult the Actions
-run for the exact revision's current result. On-device tests remain outstanding.
+run for the exact revision's current result. Native previous-version state tests also passed for both Fast (562192 bytes)
+and Plus (564544 bytes) on Linux x86-64: the 0.1 state loaded into 0.2 and
+replayed to the same WRAM contents. These are host sizes, not device sizes.
+On-device tests remain outstanding.
 The existing raw files below record the original 0.1 validation, not a new
 handheld benchmark.
 
