@@ -76,7 +76,7 @@ def main():
         arch += ['--sysroot='+str(Path(args.sysroot).resolve())]
     if not args.reference:
         flags += ['-DHCSNES_THREADED_FX']
-    sources = [ROOT/'source'/(x+'.c') for x in BASE] + [ROOT/'libretro.c', ROOT/'source/hcsnes_profile.c']
+    sources = [ROOT/'source'/(x+'.c') for x in BASE] + [ROOT/'libretro.c', ROOT/'source/hcsnes_profile.c', ROOT/'source/hcsnes_clock.c']
     if args.apu == 'plus':
         flags += ['-DUSE_BLARGG_APU']
         sources += [ROOT/'source/apu_blargg.c']

@@ -36,10 +36,10 @@ jobs:
         run: |
           ZIG="$PWD/zig-linux-x86_64-0.13.0/zig"
           "$ZIG" cc -target mipsel-linux-gnueabihf.2.17 -mcpu=mips32r2 -mabi=32 -mfp32 -O2 -g0 -fno-sanitize=all -Ilibretro-common/include tools/hcsnes_bench.c -ldl -o build/sf3000/hcsnes_bench
-          "$ZIG" cc -target mipsel-linux-gnueabihf.2.17 -mcpu=mips32r2 -mabi=32 -mfp32 -O2 -g0 -fno-sanitize=all -fwrapv -fno-strict-aliasing -Ilibretro-common/include -DHCSNES_TEST -DHCSNES_THREADED_FX tests/test_fx.c source/fxinst.c source/fxemu.c source/hcsnes_profile.c -o build/sf3000/hcsnes_fx_test
+          "$ZIG" cc -target mipsel-linux-gnueabihf.2.17 -mcpu=mips32r2 -mabi=32 -mfp32 -O2 -g0 -fno-sanitize=all -fwrapv -fno-strict-aliasing -Ilibretro-common/include -DHCSNES_TEST -DHCSNES_THREADED_FX tests/test_fx.c source/fxinst.c source/fxemu.c source/hcsnes_profile.c source/hcsnes_clock.c -o build/sf3000/hcsnes_fx_test
       - run: python3 tools/inspect_elf.py build/sf3000/*.so build/sf3000/hcsnes_bench build/sf3000/hcsnes_fx_test
-      - run: python3 tools/package.py build/HCSNES-R36S-v0.2.0.zip
+      - run: python3 tools/package.py build/HCSNES-R36S-v0.3.0.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: HCSNES-R36S-v0.2.0
-          path: build/HCSNES-R36S-v0.2.0.zip
+          name: HCSNES-R36S-v0.3.0
+          path: build/HCSNES-R36S-v0.3.0.zip

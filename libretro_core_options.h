@@ -93,12 +93,13 @@ struct retro_core_option_v2_definition option_defs_us[] = {
       "snes9x_2005_frameskip",
       "Frameskip",
       NULL,
-      "Skip frames to avoid audio buffer under-run (crackling). Improves performance at the expense of visual smoothness. 'Auto' skips frames when advised by the frontend. 'Manual' uses threshold hysteresis. 'Fixed' skips the configured number of frames between renders without audio feedback. Emulation and sound continue on every frame.",
+      "Skip frames to avoid audio buffer under-run (crackling). Improves performance at the expense of visual smoothness. 'Auto' skips frames when advised by the frontend. 'Timed' skips drawing when over half a frame late, without audio feedback (at most 2 in a row). 'Threshold' uses audio buffer hysteresis. 'Fixed' skips the configured number of frames between renders without audio feedback. Emulation and sound continue on every frame.",
       NULL,
       NULL,
       {
          { "disabled", NULL },
          { "auto",     "Auto" },
+         { "timed",    "Timed" },
          { "manual",   "Threshold" },
          { "fixed",    "Fixed" },
          { NULL, NULL },
@@ -109,7 +110,7 @@ struct retro_core_option_v2_definition option_defs_us[] = {
       "snes9x_2005_frameskip_interval",
       "Maximum Consecutive Skips",
       NULL,
-      "Maximum frames skipped before rendering. Fixed mode at 1 renders every second frame. 0 disables skipping.",
+      "Maximum frames skipped before rendering. Fixed mode at 1 renders every second frame. Timed mode never exceeds 2 consecutive skips, even if this value is higher. 0 disables skipping.",
       NULL, NULL,
       {
          { "0", NULL }, { "1", NULL }, { "2", NULL },

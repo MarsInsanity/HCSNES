@@ -1,4 +1,33 @@
-# HCSNES validation — 2026-10-25
+# HCSNES validation — updated 2026-10-26
+
+## 0.3.0 validation
+
+Native Linux x86-64 GCC O2 tests passed for Fast and Plus. Controlled frontend
+timestamps exercise the real libretro API without sleeps: the first late frame
+is skipped, at most two frames are skipped consecutively even with cap 5,
+cap 0 draws every frame, and audio continues. Timed and disabled replay reach
+the same WRAM. Reset, state/content reload, pause, disabled frontend video,
+failed/backwards time, PAL/NTSC pacing, option registration and the platform
+clock fallback are covered.
+
+Policy tests also cover exact half-frame boundaries, catch-up, every exposed
+cap, clock arithmetic guards and fast-forward lead. Deterministic profiling
+tests verify separate drawn/skipped averages and maxima with unequal group
+sizes, empty groups and window resets. Real-core logs report Timed mode and
+its effective two-frame cap.
+
+The existing 33,536-case Super FX suite passed both profiling modes (67,072
+comparisons); RTC and profiling/execution equivalence tests passed.
+0.2-to-0.3 raw state replay passed for Linux Fast (562192 bytes) and Plus
+(564544 bytes). These are host sizes, not device sizes. Host clock/schedule
+state is not serialized.
+
+CI additionally runs O3 native tests, GCC/sysroot interface builds and Zig MIPS
+builds with ELF ABI/export inspection. Consult the exact revision's Actions
+result. This release changes frame selection; no handheld was attached and
+no HCSNES Yoshi's Island FPS or smoothness gain has been established.
+The agent-reported stock measurements and corrected one-core hardware details
+are documented separately in PROFILING.md.
 
 ## 0.2.0 validation
 

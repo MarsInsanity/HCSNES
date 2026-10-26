@@ -14,6 +14,7 @@
 #include "sa1.h"
 #include "hcsnes_frameskip.h"
 #include "hcsnes_profile.h"
+#include "hcsnes_clock.h"
 #include "hcsnes_version.h"
 
 #ifdef PSP
@@ -99,6 +100,25 @@ static int32_t audio_low_pass_range = (60 * 65536) / 100;
 static unsigned frameskip_type             = 0;
 static unsigned frameskip_threshold        = 0;
 static hcsnes_skip_state hcsnes_skip = {0, false};
+static hcsnes_timed_state hcsnes_timed = {0, 0, 0};
+static retro_perf_get_time_usec_t hcsnes_get_time_usec;
+
+static void hcsnes_reset_frameskip(void)
+{
+   memset(&hcsnes_skip, 0, sizeof(hcsnes_skip));
+   memset(&hcsnes_timed, 0, sizeof(hcsnes_timed));
+}
+
+static uint64_t hcsnes_frame_time_ns(void)
+{
+   if (hcsnes_get_time_usec)
+   {
+      retro_time_t now = hcsnes_get_time_usec();
+      return now > 0 && (uint64_t)now <= UINT64_MAX / 1000 ?
+         (uint64_t)now * 1000 : 0;
+   }
+   return hcsnes_clock_now_ns();
+}
 static unsigned frameskip_interval = 1;
 
 static bool retro_audio_buff_active        = false;
@@ -476,9 +496,14 @@ static void hcsnes_audio_upload_body(void)
 
 void retro_init(void)
 {
+   struct retro_perf_callback timing = {0};
    struct retro_log_callback log;
    enum retro_pixel_format rgb565;
    bool achievements = true;
+
+   hcsnes_get_time_usec = NULL;
+   if (environ_cb(RETRO_ENVIRONMENT_GET_PERF_INTERFACE, &timing))
+      hcsnes_get_time_usec = timing.get_time_usec;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_LOG_INTERFACE, &log))
       log_cb = log.log;
@@ -531,7 +556,8 @@ void retro_deinit(void)
    libretro_supports_bitmasks = false;
    frameskip_type             = 0;
    frameskip_threshold        = 0;
-   memset(&hcsnes_skip, 0, sizeof(hcsnes_skip));
+   hcsnes_reset_frameskip();
+   hcsnes_get_time_usec = NULL;
    frameskip_interval = 1;
 #ifndef USE_BLARGG_APU
    audio_low_pass_enabled     = false;
@@ -624,6 +650,8 @@ static void check_variables(bool first_run)
          frameskip_type = 2;
       else if (strcmp(var.value, "fixed") == 0)
          frameskip_type = 3;
+      else if (strcmp(var.value, "timed") == 0)
+         frameskip_type = HCSNES_SKIP_TIMED;
    }
 
    var.key = "snes9x_2005_frameskip_threshold";
@@ -696,7 +724,7 @@ static void check_variables(bool first_run)
    }
    if (first_run || frameskip_type != prev_frameskip_type ||
        frameskip_interval != prev_frameskip_interval)
-      memset(&hcsnes_skip, 0, sizeof(hcsnes_skip));
+      hcsnes_reset_frameskip();
 
    /* Reinitialise frameskipping, if required */
    if (!first_run &&
@@ -709,10 +737,13 @@ void retro_run(void)
    bool updated = false;
    int result;
    bool okay;
+   bool skip;
+   uint64_t frame_started;
 
    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE, &updated) && updated)
       check_variables(false);
 
+   frame_started = frameskip_type == HCSNES_SKIP_TIMED ? hcsnes_frame_time_ns() : 0;
    hcsnes_profile_begin_frame();
 
 #ifdef NO_VIDEO_OUTPUT
@@ -743,11 +774,24 @@ void retro_run(void)
    }
 
    /* HCSNES: keep emulation/audio running; skip only PPU rendering. */
-   if (IPPU.RenderThisFrame &&
-       hcsnes_skip_frame(&hcsnes_skip, frameskip_type, frameskip_interval,
-          frameskip_threshold, retro_audio_buff_active,
-          retro_audio_buff_occupancy, retro_audio_buff_underrun))
-      IPPU.RenderThisFrame = false;
+   if (!IPPU.RenderThisFrame)
+      hcsnes_reset_frameskip();
+   else
+   {
+      if (frameskip_type == HCSNES_SKIP_TIMED)
+      {
+         uint64_t period = Settings.PAL ?
+            (uint64_t)(1000000000.0 / VIDEO_REFRESH_RATE_PAL + 0.5) :
+            (uint64_t)(1000000000.0 / VIDEO_REFRESH_RATE_NTSC + 0.5);
+         skip = hcsnes_skip_timed_frame(&hcsnes_skip, &hcsnes_timed,
+            frameskip_interval, frame_started, period);
+      }
+      else
+         skip = hcsnes_skip_frame(&hcsnes_skip, frameskip_type, frameskip_interval,
+            frameskip_threshold, retro_audio_buff_active,
+            retro_audio_buff_occupancy, retro_audio_buff_underrun);
+      if (skip) IPPU.RenderThisFrame = false;
+   }
 
    /* If frameskip/timing settings have changed,
     * update frontend audio latency
@@ -774,7 +818,7 @@ void retro_run(void)
 
 #ifdef NO_VIDEO_OUTPUT
    audio_upload_samples();
-   hcsnes_profile_end_frame(false, frameskip_type, frameskip_interval,
+   hcsnes_profile_end_frame(false, frameskip_type, hcsnes_skip_cap(frameskip_type, frameskip_interval),
       retro_audio_buff_active, retro_audio_buff_occupancy, retro_audio_buff_underrun);
    return;
 #endif
@@ -802,7 +846,7 @@ void retro_run(void)
       hcsnes_video(NULL, IPPU.RenderedScreenWidth, IPPU.RenderedScreenHeight, GFX.Pitch);
 
    audio_upload_samples();
-   hcsnes_profile_end_frame(IPPU.RenderThisFrame, frameskip_type, frameskip_interval,
+   hcsnes_profile_end_frame(IPPU.RenderThisFrame, frameskip_type, hcsnes_skip_cap(frameskip_type, frameskip_interval),
       retro_audio_buff_active, retro_audio_buff_occupancy, retro_audio_buff_underrun);
 }
 
@@ -870,6 +914,7 @@ void retro_get_system_av_info(struct retro_system_av_info* info)
 
 void retro_reset(void)
 {
+   hcsnes_reset_frameskip();
    hcsnes_profile_flush("reset");
    hcsnes_profile_reset();
    CPU.Flags = 0;
@@ -957,6 +1002,7 @@ bool retro_unserialize(const void* data, size_t size)
    if (!data || size != retro_serialize_size())
       return false;
 
+   hcsnes_reset_frameskip();
    hcsnes_profile_flush("state_load");
    hcsnes_profile_reset();
    S9xReset();
@@ -1188,6 +1234,7 @@ bool retro_load_game_special(unsigned game_type, const struct retro_game_info* i
 
 void retro_unload_game(void)
 {
+   hcsnes_reset_frameskip();
    hcsnes_profile_flush("unload");
    hcsnes_profile_reset();
 }

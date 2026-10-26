@@ -1,5 +1,29 @@
 # HCSNES changelog
 
+## 0.3.0
+
+- New **Timed** frameskip option alongside Auto. It skips drawing at the start
+  of a frame when more than half a frame late, using the advertised NTSC/PAL
+  frame rate. No audio-feedback dependency; emulation and audio still advance.
+- Timed obeys the configured cap with a hard maximum of two consecutive skips.
+  Pauses over 100 ms, reset, state/content load, mode/cap changes, disabled video
+  and fast-forward lead clear stale timing. Clock failure/backwards time draws.
+  Auto and cap 1 remain the defaults.
+- Profiles add **core_drawn** and **core_skipped** average/maximum timings,
+  each divided by its own frame count. Empty groups report 0/0. The existing
+  aggregate core timing is retained.
+- Document the corrected single-core hardware report and the agent's stock
+  firmware baseline. No worker threads or emulation timing hacks are added.
+- Deterministic policy and real-core tests cover deadline response, two-skip
+  bound, missing audio feedback, NTSC/PAL rates, pause/reset/load, disabled
+  video, clock failure and unchanged emulation/audio progression.
+- Host timing state is outside the serialized format. Existing same-platform,
+  same-audio-variant state layout is unchanged.
+
+For normal play, try **hcsnes_fast / Timed / cap 2 / Profiling Off**. For the
+next agent comparison, collect Auto and Timed logs as described in
+[PROFILING.md](PROFILING.md). On-device Yoshi's Island gains remain unverified.
+
 ## 0.2.0
 
 - Optional **Profiling: Off / On** logs one timing/counter line every 300

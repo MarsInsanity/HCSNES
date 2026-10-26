@@ -19,6 +19,7 @@ SOURCES_C := \
 	$(CORE_DIR)/fxemu.c \
 	$(CORE_DIR)/fxinst.c \
 	$(CORE_DIR)/hcsnes_profile.c \
+	$(CORE_DIR)/hcsnes_clock.c \
 	$(CORE_DIR)/gfx.c \
 	$(CORE_DIR)/getset.c \
 	$(CORE_DIR)/globals.c \

@@ -18,7 +18,7 @@ def run(cmd):subprocess.run(cmd,cwd=ROOT,env=env,check=True)
 run([sys.executable,'tools/gen_fx_dispatch.py','--check'])
 for test in ['test_frameskip','test_fx','test_rtc','test_profile']:
     exe=out/(test+('.exe' if os.name=='nt' else ''))
-    extra = ['source/hcsnes_profile.c'] if test in ('test_fx','test_profile') else []
+    extra = ['source/hcsnes_profile.c', 'source/hcsnes_clock.c'] if test in ('test_fx','test_profile') else []
     if test == 'test_fx': extra += ['source/fxinst.c','source/fxemu.c','-DHCSNES_TEST','-DHCSNES_THREADED_FX']
     if test == 'test_profile': extra += ['-DHCSNES_PROFILE_TEST']
     run(cc+['-O2','-g0','-fwrapv','-fno-strict-aliasing',

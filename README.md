@@ -1,4 +1,4 @@
-# HCSNES 0.2.0 — R36S V2.6 / SF3000
+# HCSNES 0.3.0 — R36S V2.6 / SF3000
 
 A modified Snes9x 2005 libretro core for TreeFrogUI/PicoArch on MIPS32r2 handhelds.
 
@@ -7,9 +7,14 @@ Native tests pass, including 33,536 Super FX differential cases and full-core
 boot/audio/video/state tests. Yoshi's Island frame rate on the handheld has
 not yet been measured.
 
-**Slow gameplay on ShallotsOS:** use the [SD-card profiling steps](PROFILING.md)
-to collect timings without a device shell. See [CHANGELOG.md](CHANGELOG.md)
-for this release’s changes and testing priorities.
+**New in 0.3.0: Timed frameskip.** For slow Yoshi's Island gameplay, try
+**hcsnes_fast**, **Frameskip = Timed**, **Maximum Consecutive Skips = 2**,
+**Profiling = Off**. This skips drawing as soon as a frame starts over half a
+frame late, while advancing emulation and audio on every call. Auto remains
+the default. Device smoothness still needs an on-device comparison.
+
+Use the [SD-card profiling steps](PROFILING.md) to compare Auto and Timed
+without a device shell. See [CHANGELOG.md](CHANGELOG.md) for the changes.
 
 ## Source repository
 
@@ -35,7 +40,12 @@ they are not committed here. Run build commands from the repository root.
 If the legacy audio build has sound or compatibility problems, select
 **hcsnes_plus** instead.
 
-If Auto does not help, try **Frameskip = Fixed**, cap **1**. This renders every
+If Auto does not help, try **Frameskip = Timed**, cap **2**. Timed follows the
+game's advertised frame rate without audio-buffer feedback, allows at most two
+consecutive skips, and starts fresh after a pause longer than 100 ms. It does
+not pace the frontend or sleep; the frontend still controls when frames run.
+
+**Frameskip = Fixed**, cap **1**, is a useful comparison. This renders every
 second frame, approximately 30 displayed FPS for an NTSC game, while executing
 every emulated frame and generating sound. It reduces PPU rendering cost;
 Super FX emulation still runs. Cap 2 means roughly 20 displayed FPS.
@@ -69,7 +79,8 @@ SA-1 and other supported cartridge hardware. There is no new dynamic recompiler.
   pipeline, registers and interrupts are retained. PLOT/RPIX use the active mode.
 - **Bounded frame skipping:** 0–5 consecutive skips. Auto and Threshold use
   frontend audio feedback. Threshold has a 10-percentage-point recovery margin.
-  Fixed mode works without feedback. Logic, coprocessors and audio run every frame.
+  Fixed mode works without feedback. Timed mode uses a per-frame clock schedule
+  and caps consecutive skips at two. Logic, coprocessors and audio run every frame.
 - **Option transition fix:** the previous frameskip mode is an unsigned enum
   rather than a boolean, so switching Auto/Threshold reinitializes feedback.
 - **MIPS build:** little-endian MIPS32r2, O32, hard float, 32-bit FPU registers,
@@ -77,9 +88,15 @@ SA-1 and other supported cartridge hardware. There is no new dynamic recompiler.
 - **RTC fix:** portable 8-byte encoding replaces an upstream 8-byte copy into
   a 4-byte time_t on 32-bit targets.
 - **Optional subsystem profiling** with versioned logs, isolated frontend callback timings,
-  and GSU operation counts. Disabled by default; no save-state layout change.
+  drawn/skipped core costs, and GSU operation counts. Disabled by default; no save-state layout change.
 - **Hidden internal symbol visibility** while preserving exported libretro functions.
 - **Tests and device benchmark tools.**
+
+ShallotsOS's corrected device report identifies **one MIPS 74Kc CPU core
+online**, with no frequency control. HCSNES uses one emulation thread; the
+phrase "direct-threaded" describes opcode dispatch, not multiple CPU threads.
+Idle-loop skipping is already enabled by default, with inherited per-game
+compatibility exceptions; Yoshi's Island is not on that exception list.
 
 Direct threading changes code size and branch behavior. Its performance is
 CPU-dependent: compare with the reference build on your device. Fast versus
@@ -143,7 +160,7 @@ Build the benchmark with:
 
 Build the on-device differential test with:
 
-    zig cc -target mipsel-linux-gnueabihf.2.17 -mcpu=mips32r2 -mabi=32 -mfp32 -O2 -g0 -fwrapv -fno-strict-aliasing -Ilibretro-common/include -DHCSNES_TEST -DHCSNES_THREADED_FX tests/test_fx.c source/fxinst.c source/fxemu.c source/hcsnes_profile.c -o hcsnes_fx_test
+    zig cc -target mipsel-linux-gnueabihf.2.17 -mcpu=mips32r2 -mabi=32 -mfp32 -O2 -g0 -fwrapv -fno-strict-aliasing -Ilibretro-common/include -DHCSNES_TEST -DHCSNES_THREADED_FX tests/test_fx.c source/fxinst.c source/fxemu.c source/hcsnes_profile.c source/hcsnes_clock.c -o hcsnes_fx_test
 
 GitHub Actions runs native tests and MIPS cross builds on pushes and pull requests.
 See the repository Actions tab for the current CI result; **VALIDATION.md** records
