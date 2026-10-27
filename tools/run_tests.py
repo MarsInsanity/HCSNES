@@ -16,11 +16,12 @@ env.update(TMP=str(temp),TEMP=str(temp),TMPDIR=str(temp))
 env.setdefault('ZIG_GLOBAL_CACHE_DIR',str(ROOT/'build/zig-cache'))
 def run(cmd):subprocess.run(cmd,cwd=ROOT,env=env,check=True)
 run([sys.executable,'tools/gen_fx_dispatch.py','--check'])
-for test in ['test_frameskip','test_fx','test_rtc','test_profile']:
+for test in ['test_frameskip','test_fx','test_rtc','test_profile','test_clock']:
     exe=out/(test+('.exe' if os.name=='nt' else ''))
     extra = ['source/hcsnes_profile.c', 'source/hcsnes_clock.c'] if test in ('test_fx','test_profile') else []
     if test == 'test_fx': extra += ['source/fxinst.c','source/fxemu.c','-DHCSNES_TEST','-DHCSNES_THREADED_FX']
     if test == 'test_profile': extra += ['-DHCSNES_PROFILE_TEST']
+    if test == 'test_clock': extra += ['source/hcsnes_clock.c']
     run(cc+['-O2','-g0','-fwrapv','-fno-strict-aliasing',
             '-I'+str(ROOT/'libretro-common/include'),
             str(ROOT/'tests'/(test+'.c')),'-o',str(exe)]+shlex.split(a.cflags)+extra)

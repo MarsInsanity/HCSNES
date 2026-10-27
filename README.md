@@ -1,17 +1,19 @@
-# HCSNES 0.3.0 — R36S V2.6 / SF3000
+# HCSNES 0.4.0 — R36S V2.6 / SF3000
 
 A modified Snes9x 2005 libretro core for TreeFrogUI/PicoArch on MIPS32r2 handhelds.
 
 **Experimental device build.** Both audio variants compile for the handheld.
 Native tests pass, including 33,536 Super FX differential cases and full-core
-boot/audio/video/state tests. Yoshi's Island frame rate on the handheld has
-not yet been measured.
+boot/audio/video/state tests. The latest device report identifies a fixed
+firmware background-load problem; measurements from before that fix are not
+the current baseline. The 0.4 changes still need an on-device comparison.
 
-**New in 0.3.0: Timed frameskip.** For slow Yoshi's Island gameplay, try
-**hcsnes_fast**, **Frameskip = Timed**, **Maximum Consecutive Skips = 2**,
-**Profiling = Off**. This skips drawing as soon as a frame starts over half a
+**New in 0.4.0: stock-like Timed policy and spike diagnostics.** For slow Yoshi's Island gameplay, try
+**hcsnes_fast**, **Frameskip = Timed**, **Maximum Consecutive Skips = 3**,
+**Profiling = Off**. This skips drawing when a frame starts at least one full
 frame late, while advancing emulation and audio on every call. Auto remains
-the default. Device smoothness still needs an on-device comparison.
+the default. Profiling now records the ten worst frames per window, with GSU
+instruction counts and host CPU time to help explain remaining hitches.
 
 Use the [SD-card profiling steps](PROFILING.md) to compare Auto and Timed
 without a device shell. See [CHANGELOG.md](CHANGELOG.md) for the changes.
@@ -40,8 +42,8 @@ they are not committed here. Run build commands from the repository root.
 If the legacy audio build has sound or compatibility problems, select
 **hcsnes_plus** instead.
 
-If Auto does not help, try **Frameskip = Timed**, cap **2**. Timed follows the
-game's advertised frame rate without audio-buffer feedback, allows at most two
+If Auto does not help, try **Frameskip = Timed**, cap **3**. Timed follows the
+game's advertised frame rate without audio-buffer feedback, allows at most three
 consecutive skips, and starts fresh after a pause longer than 100 ms. It does
 not pace the frontend or sleep; the frontend still controls when frames run.
 
@@ -80,7 +82,7 @@ SA-1 and other supported cartridge hardware. There is no new dynamic recompiler.
 - **Bounded frame skipping:** 0–5 consecutive skips. Auto and Threshold use
   frontend audio feedback. Threshold has a 10-percentage-point recovery margin.
   Fixed mode works without feedback. Timed mode uses a per-frame clock schedule
-  and caps consecutive skips at two. Logic, coprocessors and audio run every frame.
+  and caps consecutive skips at three. Logic, coprocessors and audio run every frame.
 - **Option transition fix:** the previous frameskip mode is an unsigned enum
   rather than a boolean, so switching Auto/Threshold reinitializes feedback.
 - **MIPS build:** little-endian MIPS32r2, O32, hard float, 32-bit FPU registers,
@@ -88,7 +90,8 @@ SA-1 and other supported cartridge hardware. There is no new dynamic recompiler.
 - **RTC fix:** portable 8-byte encoding replaces an upstream 8-byte copy into
   a 4-byte time_t on 32-bit targets.
 - **Optional subsystem profiling** with versioned logs, isolated frontend callback timings,
-  drawn/skipped core costs, and GSU operation counts. Disabled by default; no save-state layout change.
+  drawn/skipped core costs, ten worst frames per window, per-frame GSU operation
+  counts and optional host thread CPU time. Disabled by default; no save-state layout change.
 - **Hidden internal symbol visibility** while preserving exported libretro functions.
 - **Tests and device benchmark tools.**
 
@@ -170,7 +173,7 @@ the original local validation.
 
 See **VALIDATION.md**. No commercial ROMs were downloaded or included.
 No handheld was attached: runtime loader behavior, controls, actual sound,
-Yoshi's Island speed and broad game compatibility remain untested.
+0.4 Yoshi's Island speed and broad game compatibility remain untested here.
 
 The Super FX comparisons check equivalence with the inherited interpreter,
 not independent accuracy against physical hardware. Full-core host tests use

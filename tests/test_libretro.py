@@ -3,6 +3,7 @@
 import ctypes as C
 from pathlib import Path
 import sys
+import math
 import zlib
 from make_test_rom import make_rom
 
@@ -98,7 +99,7 @@ core.retro_get_memory_data.argtypes=[C.c_uint];core.retro_get_memory_data.restyp
 core.retro_get_memory_size.argtypes=[C.c_uint];core.retro_get_memory_size.restype=C.c_size_t
 info=SystemInfo()
 core.retro_get_system_info(C.byref(info))
-assert info.version.startswith(b'0.3.0+'),info.version
+assert info.version.startswith(b'0.4.0+'),info.version
 assert available_modes and b'timed' in available_modes,available_modes
 core.retro_init()
 rom=C.create_string_buffer(make_rom())
@@ -131,11 +132,11 @@ assert rendered==60 and duplicates==0
 assert clock_reads==0,'non-Timed mode read the frontend clock'
 # Deterministic clock through the standard libretro perf interface: no sleeps.
 mode=b'timed';cap=b'5';changed=True;rendered=duplicates=audio_frames=0
-period_us=round(1000000 / av.timing.fps)
+period_us=math.ceil(1000000 / av.timing.fps)
 assert core.retro_unserialize(state,size)
 for i in range(120):
     core.retro_run();clock_us += 2 * period_us
-assert (rendered,duplicates)==(40,80),(rendered,duplicates)
+assert (rendered,duplicates)==(30,90),(rendered,duplicates)
 assert audio_frames>60000,'Timed frameskip stopped audio'
 timed_ram=C.string_at(ram_ptr,ram_size)
 mode=b'disabled';changed=True
@@ -188,6 +189,19 @@ if logger:
         assert 'gsu_inst=0 plot=0 rpix=0' in line,line
         assert 'core_drawn=' in line and 'core_skipped=0/0' in line,line
         assert 'cpu_other=' in line and 'video_cb=' in line and 'audio_cb=' in line,line
+    spikes=[x for x in logger.captured_log().decode().splitlines() if x.startswith('HCSNES spike ')]
+    assert len(spikes)==20,len(spikes)
+    for window in range(2):
+        group=spikes[window*10:(window+1)*10]
+        records=[dict(token.split('=',1) for token in x.split() if '=' in token) for x in group]
+        assert [int(r['rank']) for r in records]==list(range(1,11))
+        assert [int(r['total_us']) for r in records]==sorted([int(r['total_us']) for r in records],reverse=True)
+        assert len({r['frame'] for r in records})==10
+        for r in records:
+            assert int(r['window_end'])==(window+1)*300
+            assert window*300<int(r['frame'])<=(window+1)*300
+            assert int(r['gsu_inst'])==0 and r['rendered']=='1'
+            assert r['cpu_clock'] in ('0','1') and 'thread_cpu_us' in r and 'offcpu_us' in r
     # A mode change remains live while profiling; partial windows flush on Off.
     mode=b'fixed';cap=b'1';changed=True
     for i in range(60):core.retro_run()
@@ -197,12 +211,12 @@ if logger:
     assert 'rendered=30 skipped=30' in logger.captured_log().decode()
     mode=b'timed';cap=b'5';profiling=b'enabled';changed=True
     logger.clear_log()
-    for i in range(30):
+    for i in range(32):
         core.retro_run();clock_us += 2 * period_us
     profiling=b'disabled';changed=True;core.retro_run()
     line=logger.captured_log().decode()
-    assert 'rendered=10 skipped=20' in line,line
-    assert 'skip_mode=4 cap=2' in line,line
+    assert 'rendered=8 skipped=24' in line,line
+    assert 'skip_mode=4 cap=3' in line,line
     assert 'core_drawn=' in line and 'core_skipped=' in line,line
     logger.clear_log()
     for i in range(301):core.retro_run()
@@ -212,7 +226,7 @@ core.retro_unload_game()
 region=b'PAL';mode=b'timed';cap=b'2'
 assert core.retro_load_game(C.byref(game))
 core.retro_get_system_av_info(C.byref(av));assert 49<av.timing.fps<51
-period_us=round(1000000 / av.timing.fps);clock_us=10000000
+period_us=math.ceil(1000000 / av.timing.fps);clock_us=10000000
 rendered=duplicates=0
 for i in range(120):
     core.retro_run();clock_us += period_us

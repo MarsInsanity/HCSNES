@@ -1,7 +1,7 @@
 /* HCSNES standalone additions: see LICENSE-HCSNES. */
 #ifndef HCSNES_VERSION_H
 #define HCSNES_VERSION_H
-#define HCSNES_VERSION "0.3.0"
+#define HCSNES_VERSION "0.4.0"
 #ifndef HCSNES_GIT_HASH
 #define HCSNES_GIT_HASH "unknown"
 #endif

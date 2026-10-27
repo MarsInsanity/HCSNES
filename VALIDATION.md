@@ -1,5 +1,32 @@
 # HCSNES validation — updated 2026-10-26
 
+## 0.4.0 validation
+
+Native Linux GCC O2 tests passed for Fast and Plus, including all 67,072
+Super FX comparisons, RTC checks and full libretro execution/video/state
+equivalence with profiling Off/On. Controlled frontend timestamps verify the
+one-full-frame Timed threshold and three-skip ceiling, audio progression,
+NTSC/PAL pacing, resets, pauses, mode changes and clock failures.
+
+Deterministic profiler tests verify descending top-ten selection, stable
+tie ordering, callback-dominated spikes, exact per-frame GSU counts, partial
+windows and no stale records after flush/reset. CPU-time unavailability is
+reported without disabling wall-time profiling. The real libretro test
+checks ten spike records per full window and their frame/window identities.
+Platform wall/thread-CPU clock tests passed on Linux and Windows; the Windows
+profiler unit tests also passed using Zig 0.13.0.
+
+0.3-to-0.4 raw save replay passed on Linux x86-64 for Fast (562192 bytes)
+and Plus (564544 bytes). Those are host sizes, not device sizes. No emulated
+state structure or serialized format changed.
+
+CI additionally runs GCC O3, the firmware GCC/sysroot build interface and
+all three MIPS cores plus diagnostics with ABI/export checks. Consult the
+exact revision's Actions result. No handheld was attached for this release.
+The supplied agent report contains pre-fix HCSNES measurements and a user
+report of improvement after the firmware's background-load fix; new 0.4
+performance and remaining spikes must be measured on that fixed system.
+
 ## 0.3.0 validation
 
 Native Linux x86-64 GCC O2 tests passed for Fast and Plus. Controlled frontend

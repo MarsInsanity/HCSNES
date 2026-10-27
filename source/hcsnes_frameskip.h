@@ -17,7 +17,7 @@ typedef struct {
 
 static unsigned hcsnes_skip_cap(unsigned mode, unsigned limit)
 {
-   unsigned maximum = mode == HCSNES_SKIP_TIMED ? 2 : 5;
+   unsigned maximum = mode == HCSNES_SKIP_TIMED ? 3 : 5;
    return limit < maximum ? limit : maximum;
 }
 
@@ -55,7 +55,7 @@ static bool hcsnes_skip_timed_frame(hcsnes_skip_state *s, hcsnes_timed_state *t,
       t->next = now;
       s->consecutive = 0;
    }
-   late = now > t->next && now - t->next > period / 2;
+   late = now > t->next && now - t->next >= period;
    t->last = now;
    t->period = period;
    t->next += period;

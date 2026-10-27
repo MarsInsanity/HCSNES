@@ -34,10 +34,10 @@ static void test_timed(void)
    period = 20000000;
    t.last = 0; now = 1000000000;
    assert(!hcsnes_skip_timed_frame(&s, &t, 2, now, period));
-   now += period + period / 2;
-   assert(!hcsnes_skip_timed_frame(&s, &t, 2, now, period)); /* strict > half */
+   now += 2 * period - 1;
+   assert(!hcsnes_skip_timed_frame(&s, &t, 2, now, period)); /* below full frame */
    now += period + 1;
-   assert(hcsnes_skip_timed_frame(&s, &t, 2, now, period));
+   assert(hcsnes_skip_timed_frame(&s, &t, 2, now, period)); /* exactly full frame */
    now = t.next; /* Catch-up returns to drawing immediately. */
    assert(!hcsnes_skip_timed_frame(&s, &t, 2, now, period));
    now += 100000000;
